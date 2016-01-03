@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.text.Html;
+import android.text.util.Linkify;
 import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -13,8 +14,9 @@ import android.widget.TextView;
 import com.ortiz.touch.TouchImageView;
 
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
 
 import java.io.IOException;
 import java.net.URL;
@@ -29,6 +31,7 @@ public class PostViewHolder {
     @Bind(R.id.post_message)
     LinearLayout message;
 
+    private static final String tag = "PostViewHolder";
     private final Context context;
     private final View view;
 
@@ -41,19 +44,37 @@ public class PostViewHolder {
     public void setPost(Post post) {
         message.removeAllViews();
         author.setText(Html.fromHtml(post.getAuthor() + " " + post.getTimestamp()));
-        Element body = Jsoup.parse(post.getMessage()).body();
-        for (Element element : body.getAllElements()) {
-            final View view;
-            switch (element.tagName()) {
-                case "img":
-                    view = new TouchImageView(context);
-                    new DownloadImageTask((TouchImageView) view).execute(element.attr("src"));
-                    break;
-                default:
-                    view = new TextView(context);
-                    ((TextView) view).setText(Html.fromHtml(element.html()));
+        Element body = Jsoup.parseBodyFragment(post.getMessage()).body();
+        for (Node node : body.childNodes()) {
+            if (node instanceof TextNode) {
+                TextView view = new TextView(context);
+                String text = ((TextNode) node).text().trim();
+                if (!text.isEmpty()) {
+                    view.setText(Html.fromHtml(text));
+                    view.setAutoLinkMask(Linkify.ALL);
+                    message.addView(view);
+                }
+            } else if (node instanceof Element) {
+                Element element = (Element) node;
+                switch (element.tagName()) {
+                    case "br":
+                        // do nothing
+                        // TODO this removes intentional newlines.
+                        break;
+                    case "img":
+                        TouchImageView imageView = new TouchImageView(context);
+                        new DownloadImageTask(imageView).execute(element.attr("src"));
+                        message.addView(imageView);
+                        break;
+                    default:
+                        TextView view = new TextView(context);
+                        view.setText(Html.fromHtml(element.html()));
+                        view.setAutoLinkMask(Linkify.ALL);
+                        message.addView(view);
+                }
+            } else {
+                Log.w(tag, "Unknown node.");
             }
-            message.addView(view);
         }
     }
 
