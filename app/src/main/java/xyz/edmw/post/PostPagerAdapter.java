@@ -23,4 +23,9 @@ public class PostPagerAdapter extends FragmentStatePagerAdapter {
     public int getCount() {
         return numPages;
     }
+
+    @Override
+    public CharSequence getPageTitle(int position) {
+        return String.valueOf(position + 1);
+    }
 }
