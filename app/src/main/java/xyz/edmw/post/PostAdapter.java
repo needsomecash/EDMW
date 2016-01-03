@@ -39,7 +39,7 @@ public class PostAdapter extends BaseAdapter {
         PostViewHolder holder;
         if (convertView == null) {
             convertView = LayoutInflater.from(context).inflate(R.layout.view_post, null);
-            holder = new PostViewHolder(convertView);
+            holder = new PostViewHolder(context, convertView);
             convertView.setTag(holder);
         } else {
             holder = (PostViewHolder) convertView.getTag();
