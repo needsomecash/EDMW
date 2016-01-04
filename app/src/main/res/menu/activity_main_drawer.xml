@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <item android:title="Forum">
+        <menu>
+            <item
+                android:id="@+id/nav_edmw"
+                android:title="EDMW" />
+            <item
+                android:id="@+id/nav_nsfw"
+                android:title="NSFW" />
+        </menu>
+    </item>
+
     <group android:checkableBehavior="single">
         <item
             android:id="@+id/nav_camera"
