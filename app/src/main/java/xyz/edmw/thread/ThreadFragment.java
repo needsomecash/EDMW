@@ -3,24 +3,34 @@ package xyz.edmw.thread;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.ListFragment;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import java.util.List;
 
+import butterknife.Bind;
+import butterknife.ButterKnife;
 import retrofit.Call;
 import retrofit.Callback;
 import retrofit.Response;
 import retrofit.Retrofit;
+import xyz.edmw.R;
 import xyz.edmw.rest.RestClient;
 
-public class ThreadFragment extends ListFragment {
+public class ThreadFragment extends ListFragment implements SwipeRefreshLayout.OnRefreshListener {
     private static final String tag = "ThreadFragment";
     private static final String ARG_FORUM = "arg_forum";
     private static final String ARG_PAGE = "arg_page";
     private OnThreadSelectedListener callback;
     private List<Thread> threads;
+
+    @Bind(R.id.swipe_refresh_layout)
+    SwipeRefreshLayout swipeRefreshLayout;
 
     public static ThreadFragment newInstance(String forum, int page) {
         ThreadFragment fragment = new ThreadFragment();
@@ -29,6 +39,53 @@ public class ThreadFragment extends ListFragment {
         args.putInt(ARG_PAGE, page);
         fragment.setArguments(args);
         return fragment;
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_list, container, false);
+        ButterKnife.bind(this, view);
+        return view;
+    }
+
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+
+        swipeRefreshLayout.setOnRefreshListener(this);
+        loadThreads();
+    }
+
+    private void loadThreads() {
+        Bundle args = getArguments();
+        String forum = args.getString(ARG_FORUM);
+        int page = args.getInt(ARG_PAGE);
+
+        Call<List<Thread>> calls = RestClient.getService().getThreads(forum, page);
+        calls.enqueue(new Callback<List<Thread>>() {
+            @Override
+            public void onResponse(Response<List<Thread>> response, Retrofit retrofit) {
+                if (response.isSuccess()) {
+                    threads = response.body();
+                    setListAdapter(new ThreadAdapter(getContext(), threads));
+                } else {
+                    showErrorMessage();
+                }
+                swipeRefreshLayout.setRefreshing(false);
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                t.printStackTrace();
+                showErrorMessage();
+                threads = null;
+                swipeRefreshLayout.setRefreshing(false);
+            }
+        });
+    }
+
+    private void showErrorMessage() {
+        Toast.makeText(getContext(), "Failed to load threads", Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -55,31 +112,8 @@ public class ThreadFragment extends ListFragment {
     }
 
     @Override
-    public void setUserVisibleHint(boolean isVisibleToUser) {
-        super.setUserVisibleHint(isVisibleToUser);
-
-        if (isVisibleToUser) {
-            Bundle args = getArguments();
-            String forum = args.getString(ARG_FORUM);
-            int page = args.getInt(ARG_PAGE);
-
-            Call<List<Thread>> calls = RestClient.getService().getThreads(forum, page);
-            calls.enqueue(new Callback<List<Thread>>() {
-                @Override
-                public void onResponse(Response<List<Thread>> response, Retrofit retrofit) {
-                    if (response.isSuccess()) {
-                        threads = response.body();
-                        setListAdapter(new ThreadAdapter(getContext(), threads));
-                    }
-                }
-
-                @Override
-                public void onFailure(Throwable t) {
-                    t.printStackTrace();
-                    threads = null;
-                }
-            });
-        }
+    public void onRefresh() {
+        loadThreads();
     }
 
     public interface OnThreadSelectedListener {
