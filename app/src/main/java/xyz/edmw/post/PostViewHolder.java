@@ -3,6 +3,8 @@ package xyz.edmw.post;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.support.v4.app.FragmentManager;
+import android.graphics.drawable.BitmapDrawable;
 import android.text.Html;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -26,7 +28,9 @@ import org.jsoup.nodes.TextNode;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
+import xyz.edmw.MainActivity;
 import xyz.edmw.R;
+import xyz.edmw.image.ImageDialogFragment;
 
 public class PostViewHolder {
     @Bind(R.id.post_author)
@@ -78,7 +82,7 @@ public class PostViewHolder {
             case "img":
                 final ImageView imageView = new ImageView(context);
 
-                String source = element.attr("src");
+                final String source = element.attr("src");
                 if(source.contains("www.edmw.xyz")) {
 
                     Ion.with(imageView)
@@ -100,13 +104,14 @@ public class PostViewHolder {
 
                                                     imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
                                                     imageView.setAdjustViewBounds(true);
-                                                    imageView.getLayoutParams().width = displayWidth/4;
+                                                    imageView.getLayoutParams().width = imageView.getDrawable().getIntrinsicWidth()*6;
                                                     return true;
                                                 }
                                             });
                                 }
                             });
                     message.addView(imageView);
+
                 } else {
                     imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
                     imageView.setAdjustViewBounds(true);
@@ -114,6 +119,17 @@ public class PostViewHolder {
                     Ion.with(imageView)
                             .load(source);
                     message.addView(imageView);
+
+                    imageView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+
+                            FragmentManager fm = ((MainActivity) context).getSupportFragmentManager();
+                            ImageDialogFragment a = new ImageDialogFragment();
+                            a.newInstance(source);
+                            a.show(fm, "dialog_image");
+                        }
+                    });
                 }
 
 
@@ -123,12 +139,23 @@ public class PostViewHolder {
                     View view = LayoutInflater.from(context).inflate(R.layout.view_quote, null);
                     PostViewHolder viewHolder = new PostViewHolder(context, view);
 
-                    String postedBy = element.select("div.bbcode_postedby").first().text().trim();
-                    String message = element.select("div.message").first().html();
-                    Post post = new Post(postedBy, "", message);
-                    viewHolder.setPost(post);
+                    Element quoteElement = element.select("div.bbcode_postedby").first();
+                    String quoteBy = "";
+                    if(quoteElement != null) {
+                        quoteBy = quoteElement.text().trim();
+                        quoteBy = quoteBy.replace(" View Post", "");
+                    }
+                    Element messageElement = element.select("div.message").first();
+                    String quoteMessage = "";
+                    if(messageElement != null) {
+                        quoteMessage = messageElement.html();
+                    }
 
-                    this.message.addView(view);
+                    if(quoteMessage != null && !quoteMessage.isEmpty()) {
+                        Post post = new Post(quoteBy, "", quoteMessage);
+                        viewHolder.setPost(post);
+                        this.message.addView(view);
+                    }
                     break;
                 } else {
                     // fall through
