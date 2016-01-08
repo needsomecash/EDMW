@@ -1,16 +1,23 @@
 package xyz.edmw.post;
 
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.text.Html;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.koushikdutta.async.future.Future;
+import com.koushikdutta.async.future.FutureCallback;
+import com.koushikdutta.ion.ImageViewBitmapInfo;
 import com.koushikdutta.ion.Ion;
+import com.koushikdutta.ion.builder.AnimateGifMode;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
@@ -29,9 +36,11 @@ public class PostViewHolder {
 
     private static final String tag = "PostViewHolder";
     private final Context context;
+    final int displayWidth;
 
     public PostViewHolder(Context context, View view) {
         this.context = context;
+        displayWidth = ((Activity) context).getWindowManager().getDefaultDisplay().getWidth();
         ButterKnife.bind(this, view);
     }
 
@@ -68,14 +77,46 @@ public class PostViewHolder {
                 break;
             case "img":
                 final ImageView imageView = new ImageView(context);
-                imageView.setAdjustViewBounds(true);
-                imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                imageView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                message.addView(imageView);
 
                 String source = element.attr("src");
-                Ion.with(imageView)
-                        .load(source);
+                if(source.contains("www.edmw.xyz")) {
+
+                    Ion.with(imageView)
+                            .animateGif(AnimateGifMode.ANIMATE)
+                            .load(source)
+                            .setCallback(new FutureCallback<ImageView>() {
+
+                                @SuppressLint("NewApi")
+                                @Override
+                                public void onCompleted(Exception arg0,
+                                                        ImageView arg1) {
+
+                                    imageView.getViewTreeObserver().addOnPreDrawListener(
+                                            new ViewTreeObserver.OnPreDrawListener() {
+                                                public boolean onPreDraw() {
+
+                                                    imageView.getViewTreeObserver()
+                                                            .removeOnPreDrawListener(this);
+
+                                                    imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                                                    imageView.setAdjustViewBounds(true);
+                                                    imageView.getLayoutParams().width = displayWidth/4;
+                                                    return true;
+                                                }
+                                            });
+                                }
+                            });
+                    message.addView(imageView);
+                } else {
+                    imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    imageView.setAdjustViewBounds(true);
+
+                    Ion.with(imageView)
+                            .load(source);
+                    message.addView(imageView);
+                }
+
+
                 break;
             case "div":
                 if (element.className().equals("bbcode_container")) {
